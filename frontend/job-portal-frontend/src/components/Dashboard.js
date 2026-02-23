@@ -6,11 +6,16 @@ const Dashboard = () => {
   const { user, token } = useContext(AuthContext);
   const [jobs, setJobs] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const BASE_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
-    if (!user) return;
+    // Wait until token is available
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     const fetchData = async () => {
       try {
@@ -20,22 +25,39 @@ const Dashboard = () => {
           },
         };
 
-        if (user.role === 'HR') {
+        if (user?.role === 'HR') {
           const jobResponse = await axios.get(`${BASE_URL}/jobs/view`, config);
-          setJobs(jobResponse.data.filter((job) => job.postedBy.email === user.email));
+          setJobs(
+            jobResponse.data.filter(
+              (job) => job.postedBy.email === user.email
+            )
+          );
 
-          const appResponse = await axios.get(`${BASE_URL}/crm/applications/hr?email=${user.email}`, config);
+          const appResponse = await axios.get(
+            `${BASE_URL}/crm/applications/hr?email=${user.email}`,
+            config
+          );
           setApplications(appResponse.data);
-        } else if (user.role === 'EMPLOYEE') {
-          const response = await axios.get(`${BASE_URL}/crm/applications`, config);
+        } 
+        else if (user?.role === 'EMPLOYEE') {
+          const response = await axios.get(
+            `${BASE_URL}/crm/applications`,
+            config
+          );
           setApplications(response.data);
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchData();
+    if (user) {
+      fetchData();
+    } else {
+      setLoading(false);
+    }
   }, [user, token, BASE_URL]);
 
   const handleDelete = async (id) => {
@@ -51,13 +73,23 @@ const Dashboard = () => {
     }
   };
 
-  if (!user) return <div className="p-4">Please login to view your dashboard</div>;
+  // 🔴 Loading state
+  if (loading) {
+    return <div className="p-4">Loading dashboard...</div>;
+  }
+
+  // 🔴 Not logged in
+  if (!token) {
+    return <div className="p-4">Please login to view your dashboard</div>;
+  }
 
   return (
     <div className="container mx-auto p-4">
-      <h2 className="text-2xl font-bold mb-4">Dashboard ({user.role})</h2>
+      <h2 className="text-2xl font-bold mb-4">
+        Dashboard ({user?.role})
+      </h2>
 
-      {user.role === 'HR' ? (
+      {user?.role === 'HR' ? (
         <>
           <h3 className="text-xl font-semibold mb-2">Your Posted Jobs</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -83,12 +115,9 @@ const Dashboard = () => {
                 <h4 className="text-lg font-semibold">{app.job.title}</h4>
                 <p>Applicant: {app.user.name}</p>
                 <p>Email: {app.user.email}</p>
-                <p>Phone: {app.coverLetter?.split('Phone:')[1]}</p>
                 <p>Status: {app.status}</p>
-                <p>Applied On: {app.applyDate}</p>
                 <a
                   href={`${BASE_URL}/resume/download/${encodeURIComponent(app.resumeUrl)}`}
-                  download
                   className="text-blue-600 hover:underline mt-2 inline-block"
                 >
                   Download Resume
@@ -106,14 +135,13 @@ const Dashboard = () => {
                 <h4 className="text-lg font-semibold">{app.job.title}</h4>
                 <p>Company: {app.job.company}</p>
                 <p>Status: {app.status}</p>
-                <p>Applied On: {app.applyDate}</p>
                 <a
                   href={`${BASE_URL}/resume/download/${encodeURIComponent(app.resumeUrl)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline mt-2 inline-block"
                 >
-                  View Submitted Resume
+                  View Resume
                 </a>
               </div>
             ))}
@@ -125,5 +153,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
-
