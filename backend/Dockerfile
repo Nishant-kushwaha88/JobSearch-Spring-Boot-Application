@@ -2,8 +2,11 @@ FROM maven:3.9.6-eclipse-temurin-17
 
 WORKDIR /app
 
-COPY . .
+# Copy backend project files
+COPY backend/pom.xml .
+COPY backend/src ./src
 
+# Build jar
 RUN mvn clean package -DskipTests
 
 EXPOSE 8080
